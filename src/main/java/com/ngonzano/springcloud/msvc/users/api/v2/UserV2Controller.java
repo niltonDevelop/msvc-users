@@ -1,4 +1,4 @@
-package com.ngonzano.springcloud.msvc.users.controllers;
+package com.ngonzano.springcloud.msvc.users.api.v2;
 
 import java.util.Optional;
 
@@ -12,27 +12,32 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ngonzano.springcloud.msvc.users.api.v2.mapper.UserV2Mapper;
 import com.ngonzano.springcloud.msvc.users.dto.UserUpdateRequestDto;
 import com.ngonzano.springcloud.msvc.users.entities.User;
 import com.ngonzano.springcloud.msvc.users.services.UserService;
 
 @RestController
-public class UserController {
+public class UserV2Controller {
 
 	private final UserService service;
 
-	public UserController(UserService service) {
+	public UserV2Controller(UserService service) {
 		this.service = service;
 	}
 
 	@GetMapping
 	public ResponseEntity<?> findAll() {
-		return ResponseEntity.ok(service.findAll());
+		return ResponseEntity.ok(
+				service.findAll().stream()
+						.map(UserV2Mapper::toResponse)
+						.toList());
 	}
 
 	@GetMapping("/{id}")
 	public ResponseEntity<?> findById(@PathVariable Long id) {
 		return service.findById(id)
+				.map(UserV2Mapper::toResponse)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
@@ -41,6 +46,7 @@ public class UserController {
 	public ResponseEntity<?> save(@RequestBody User user) {
 		return Optional.of(user)
 				.map(service::save)
+				.map(UserV2Mapper::toResponse)
 				.map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved))
 				.orElseGet(() -> ResponseEntity.badRequest().build());
 	}
@@ -48,6 +54,7 @@ public class UserController {
 	@PutMapping("/{id}")
 	public ResponseEntity<?> update(@PathVariable Long id, @RequestBody UserUpdateRequestDto request) {
 		return service.update(id, request)
+				.map(UserV2Mapper::toResponse)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}

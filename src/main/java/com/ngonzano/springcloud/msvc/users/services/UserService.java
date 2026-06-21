@@ -13,6 +13,8 @@ public interface UserService {
 
 	Optional<User> findById(Long id);
 
+	Optional<User> findByUsernameForAuth(String username);
+
 	User save(User user);
 
 	Optional<User> update(Long id, UserUpdateRequestDto request);

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ngonzano.springcloud.msvc.users.dto.UserUpdateRequestDto;
 import com.ngonzano.springcloud.msvc.users.entities.Role;
 import com.ngonzano.springcloud.msvc.users.entities.User;
+import com.ngonzano.springcloud.msvc.users.exception.DuplicateUserException;
 import com.ngonzano.springcloud.msvc.users.exception.RoleNotFoundException;
 import com.ngonzano.springcloud.msvc.users.repositories.RoleRepository;
 import com.ngonzano.springcloud.msvc.users.repositories.UserRepository;
@@ -34,18 +35,30 @@ public class UserServiceImpl implements UserService {
 	@Transactional(readOnly = true)
 	public List<User> findAll() {
 		return StreamSupport.stream(userRepository.findAll().spliterator(), false)
+				.map(this::withSyncedIsAdmin)
 				.toList();
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public Optional<User> findById(Long id) {
-		return userRepository.findById(id);
+		return userRepository.findById(id)
+				.map(this::withSyncedIsAdmin);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<User> findByUsernameForAuth(String username) {
+		return Optional.ofNullable(userRepository.findByUsername(username))
+				.filter(user -> Boolean.TRUE.equals(user.getEnabled()));
 	}
 
 	@Override
 	@Transactional
 	public User save(User user) {
+		if (userRepository.findByUsername(user.getUsername()) != null) {
+			throw new DuplicateUserException("El username ya existe");
+		}
 		return Optional.of(user)
 				.map(this::prepareForSave)
 				.map(userRepository::save)
@@ -81,6 +94,7 @@ public class UserServiceImpl implements UserService {
 		user.setPassword(passwordEncoder.encode(user.getPassword()));
 		user.setEnabled(Optional.ofNullable(user.getEnabled()).orElse(true));
 		user.setRoles(getRoles(user));
+		syncIsAdminFromRoles(user);
 		return user;
 	}
 
@@ -92,6 +106,7 @@ public class UserServiceImpl implements UserService {
 		Optional.ofNullable(request.getIsAdmin())
 				.map(this::getRolesByAdmin)
 				.ifPresent(user::setRoles);
+		syncIsAdminFromRoles(user);
 		return user;
 	}
 
@@ -114,6 +129,17 @@ public class UserServiceImpl implements UserService {
 
 	private <T> void applyIfPresent(T value, Consumer<T> consumer) {
 		Optional.ofNullable(value).ifPresent(consumer);
+	}
+
+	private User withSyncedIsAdmin(User user) {
+		syncIsAdminFromRoles(user);
+		return user;
+	}
+
+	private void syncIsAdminFromRoles(User user) {
+		boolean isAdmin = user.getRoles() != null && user.getRoles().stream()
+				.anyMatch(role -> Role.ROLE_ADMIN.equals(role.getName()));
+		user.setIsAdmin(isAdmin);
 	}
 
 }

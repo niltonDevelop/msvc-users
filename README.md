@@ -7,6 +7,7 @@ Microservicio de **gestión de usuarios**. Expone API versionada (v1/v2), persis
 - Java 21 · Spring Boot 4.1.0 · Spring Cloud 2025.1.2
 - Puerto: **dinámico** (`${PORT:0}`) — consultar instancia en Eureka
 - Base de datos: MySQL `db_springboot_cloud`
+- **Distributed tracing:** [Micrometer Tracing](https://docs.micrometer.io/tracing/reference/) + Zipkin. Ver [docs/TRACING.md](docs/TRACING.md)
 
 ## Endpoints
 
@@ -60,3 +61,11 @@ Microservicio de **identidad y usuarios**. Es la fuente de credenciales y roles 
 **Consumido por:** **oauth** (Feign → `/internal/auth`), **msvc-gateway-server** (proxy), **flutter_spring_boot** (indirectamente vía gateway).
 
 **Orden de arranque recomendado:** 3.º, antes de **oauth** y del gateway.
+
+## Tracing (Zipkin)
+
+```bash
+cd .. && docker compose up -d   # raíz SpringCloud → http://localhost:9411
+```
+
+Detalle: [docs/TRACING.md](docs/TRACING.md).
